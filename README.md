@@ -22,7 +22,7 @@ it solves.
 framework. It runs a web API server to receive requests from the AMPT manager
 to dispatch healthcheck IP packets to monitored network segments. It is
 implemented in Python and uses the Scapy ([scapy3k][scapy3k]) library for
-packet generation. It is simple to deploy.
+packet generation. It currently supports Python 3 and is simple to deploy.
 
 Other AMPT components include:
 
