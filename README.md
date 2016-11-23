@@ -37,6 +37,10 @@ See the [Wiki](https://github.com/nids-io/ampt-generator/wiki/) for further
 documentation.
 
 
+[suricata]: https://suricata-ids.org/
+[snort]: https://www.snort.org/
+[bro]: https://www.bro.org/
+[moloch]: https://github.com/aol/moloch
 [ampt_manager]: https://github.com/nids-io/ampt-manager
 [ampt_generator]: https://github.com/nids-io/ampt-generator
 [ampt_monitor]: https://github.com/nids-io/ampt-monitor
