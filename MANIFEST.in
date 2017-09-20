@@ -1,1 +1,2 @@
 include *.md
+recursive-include ampt_generator/conf *
