@@ -14,20 +14,13 @@ from . import packetgen
 from . import app
 
 
-DEFAULTS = {
-    'listen_address': '127.0.0.1',
-    'listen_port': 5000,
-    'config_file': '/etc/ampt-generator.conf',
-    'loglevel': 'warning',
-    'app_user': 'nobody',
-    'app_group': 'nobody',
-}
-
 LOGLEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
 
+### XXX what are we doing in this section? Flask has a default logger as a
+### StreamHandler at app.logger and this is creating a new root logger.
 logger = logging.getLogger('ampt_generator')  # XXX: per module logs based off verbosity
 # XXX logger.setLevel(logging.DEBUG)  # Collect all log levels
-logger.setLevel(DEFAULTS['loglevel'].upper())
+logger.setLevel(app.config['LOGLEVEL'].upper())
 logger.addHandler(logging.NullHandler())  # Set the default logger to be a nullhandler
 
 
@@ -57,6 +50,7 @@ def ampt_gen():
                         help='log file name')
     args = parser.parse_args()
 
+    # XXX this is working with the non-Flask root logger noted at top of module
     console_handler = logging.StreamHandler()
     if args.verbose:
         console_handler.setLevel(logging.DEBUG)
@@ -108,22 +102,24 @@ def ampt_gen_taskrunner():
     '''
     name = multiprocessing.current_process().name
     pid = multiprocessing.current_process().pid
+    msg_queue_bind = app.config['ZMQ_BIND']
 
     running_user = pwd.getpwuid(os.getuid()).pw_name
     running_group = grp.getgrgid(os.getgid()).gr_name
-    app.logger.debug('process %s (pid: %d) running as user %s, group %s',
+    app.logger.debug('process %s (pid: %d) initialized as user %s, group %s',
                      name, pid, running_user, running_group)
-    app.logger.debug('starting probe packet dispatch loop')
+    app.logger.debug('process %s (pid: %d) starting probe packet dispatcher '
+                     'using message queue at %s...',
+                     name, pid, msg_queue_bind)
 
     try:
         context = zmq.Context()
         socket = context.socket(zmq.PULL)
-        socket.bind(app.config.get('ZMQ_BIND'))
+        socket.bind(msg_queue_bind)
         while True:
             packet = socket.recv_json()
-            # XXX swap and standardize?
-            #logger.info('Received workload: %s' % repr(packet))
-            app.logger.info('received workload: %s', repr(packet))
+            app.logger.info('process %s (pid: %d) received workload: %s',
+                            name, pid, repr(packet))
             packetgen.generate_packet(**packet)
     except KeyboardInterrupt:
         pass
@@ -138,26 +134,22 @@ def ampt_builtin_server(host, port, user, group):
     name = multiprocessing.current_process().name
     pid = multiprocessing.current_process().pid
 
-    host = (host or app.config.get('LISTEN_ADDRESS')
-            or DEFAULTS['listen_address'])
-    port = (port or app.config.get('LISTEN_PORT')
-            or DEFAULTS['listen_port'])
-    user = (user or app.config.get('USER')
-            or DEFAULTS['app_user'])
-    group = (group or app.config.get('GROUP')
-            or DEFAULTS['app_group'])
+    host = host or app.config['LISTEN_ADDRESS']
+    port = port or app.config['LISTEN_PORT']
+    user = user or app.config['USER']
+    group = group or app.config['GROUP']
 
     if os.getuid() == 0:
-        app.logger.debug('dropping privileges for %s process (pid: %d)...',
+        app.logger.debug('process %s (pid: %d) dropping privileges...',
                          name, pid)
         drop_privileges(uid_name=user, gid_name=group)
 
     running_user = pwd.getpwuid(os.getuid()).pw_name
     running_group = grp.getgrgid(os.getgid()).gr_name
-    app.logger.debug('process %s (pid: %d) running as user %s, group %s',
+    app.logger.debug('process %s (pid: %d) initialized as user %s, group %s',
                      name, pid, running_user, running_group)
-    app.logger.debug('loading app server on address %s and port %d',
-                     host, port)
+    app.logger.debug('process %s (pid: %d) loading application on address %s '
+                     'and port %d...', name, pid, host, port)
 
     app.run(host=host, port=port, use_reloader=False)
 
@@ -173,33 +165,36 @@ def ampt_server():
     description = 'Run AMPT probe generator API and dispatch workers'
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-c', '--config-file', type=valid_configfile,
-                        default=DEFAULTS['config_file'],
+                        default=app.config['CONFIG_FILE'],
                         help='load app configuration from specified file '
                              '(default: %(default)s)')
     parser.add_argument('-L', '--listen-address',
                         help='listen for connections on specified IP address '
-                             '(default: {addr})'.format(addr=DEFAULTS["listen_address"]))
+                             '(default: {addr})'.format(addr=app.config['LISTEN_ADDRESS']))
     parser.add_argument('-p', '--listen-port', type=int,
                         help='listen for connections on specified port '
-                             '(default: {port})'.format(port=DEFAULTS["listen_port"]))
+                             '(default: {port})'.format(port=app.config['LISTEN_PORT']))
     parser.add_argument('-u', '--user',
                         help='set app server process to run as specified user '
-                             '(default: {user})'.format(user=DEFAULTS["app_user"]))
+                             '(default: {user})'.format(user=app.config['USER']))
     parser.add_argument('-g', '--group',
                         help='set app server process to run as specified group '
-                             '(default: {group})'.format(group=DEFAULTS["app_group"]))
+                             '(default: {group})'.format(group=app.config['GROUP']))
+    parser.add_argument('-o', '--logfile',
+                        help='log to specified file (default: do not log to file)')
     parser.add_argument('-l', '--loglevel', choices=LOGLEVEL_CHOICES,
                         help='set logging verbosity level '
-                             '(default: {level})'.format(level=DEFAULTS["loglevel"]))
+                             '(default: {level})'.format(level=app.config['LOGLEVEL']))
     args = parser.parse_args()
 
     # XXX replace ampt_builtin_server with a function that runs the app in a
     # Gunicorn instance like ampt-manager does
 
+    # Apply configuration (default path or specified from cmd line)
     app.config.from_pyfile(os.path.abspath(args.config_file))
 
-    loglevel = (args.loglevel or app.config.get('LOGLEVEL')
-            or DEFAULTS['loglevel']).upper()
+    loglevel = (args.loglevel or app.config['LOGLEVEL']).upper()
+    logfile = args.logfile or app.config['LOGFILE']
 
     if not app.debug:
         app_formatter = app.config['CONSOLE_LOG_FORMATTER']
@@ -208,16 +203,17 @@ def ampt_server():
         stream_handler.setFormatter(app_formatter)
         app.logger.addHandler(stream_handler)
         app.logger.setLevel(loglevel)
-    if app.config.get('LOGFILE'):
+    if logfile:
         file_formatter = app.config['FILE_LOG_FORMATTER']
-        file_handler = logging.FileHandler(app.config['LOGFILE'])
+        file_handler = logging.FileHandler(logfile)
         file_handler.setLevel(loglevel)
         file_handler.setFormatter(file_formatter)
         app.logger.addHandler(file_handler)
 
-    app.logger.info('starting ampt-manager API and packet dispatch services')
-    app.logger.info('configuring logging at level: %s',
+    app.logger.info('loaded configuration from file %s', args.config_file)
+    app.logger.info('configured logging at level: %s',
                     logging.getLevelName(app.logger.level))
+    app.logger.info('starting ampt-manager API and packet dispatch services...')
 
     server_options =  {
         'host': args.listen_address,
