@@ -42,6 +42,7 @@ def ampt_gen():
     :return:
 
     '''
+    # XXX determine if this function/entry point has any real use today
     description = 'Generate TCP packet to specified destination address and port'
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('dest_addr', default=None,
@@ -98,8 +99,7 @@ def drop_privileges(uid_name='nobody', gid_name='nogroup'):
 
 def ampt_gen_taskrunner():
     '''
-    Run packet generation as privileged process. This needs to run as root :(
-    XXX does it when using scapy-python3?
+    Run packet generation dispatch receipt child process.
     :return:
 
     '''
@@ -185,10 +185,7 @@ def ampt_server():
                              '(default: {level})'.format(level=app.config['LOGLEVEL']))
     args = parser.parse_args()
 
-    # XXX replace ampt_builtin_server with a function that runs the app in a
-    # Gunicorn instance like ampt-manager does
-
-    # Apply configuration (default path or specified from cmd line)
+    # Apply user configuration (default path or specified from cmd line)
     app.config.from_pyfile(os.path.abspath(args.config_file))
 
     loglevel = (args.loglevel or app.config['LOGLEVEL']).upper()
@@ -235,8 +232,8 @@ def ampt_server():
             # with lower privileges and file should be writable to that user:
             if os.getuid() == 0:
                 _kwargs.update(
-                    user=app.config['USER'], group=app.config['GROUP'])
-            # XXX prep_counter_db(app.config['DB_PATH'])
+                    user=app.config['USER'],
+                    group=app.config['GROUP'])
             prep_counter_db(**_kwargs)
         except OSError as e:
             msg = 'unable to create counter database (%s)'
