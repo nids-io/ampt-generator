@@ -17,7 +17,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='ampt-generator',
-    version='0.2.0',
+    version='0.2.1',
     description='AMPT-generator, a simple Flask based app that generates packets to be observed by passive networking monitoring',
     long_description=long_description,
     url='https://github.com/nids-io/ampt-generator',
@@ -41,7 +41,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'Flask',
-        'Flask-RESTful',
+        'flask-restplus',
         'future',
         'netifaces',
         'pyzmq',
