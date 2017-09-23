@@ -1,6 +1,7 @@
-"""
+'''
 ampt-generator setup
-"""
+
+'''
 
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
@@ -16,7 +17,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='ampt-generator',
-    version='0.1.5',
+    version='0.2.0',
     description='AMPT-generator, a simple Flask based app that generates packets to be observed by passive networking monitoring',
     long_description=long_description,
     url='https://github.com/nids-io/ampt-generator',

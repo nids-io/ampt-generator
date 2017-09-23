@@ -1,6 +1,7 @@
 # ampt-generator.conf
 LISTEN_ADDRESS = 'localhost'
 LISTEN_PORT = 5000
+DB_PATH = '/var/ampt/ampt-generator.db'
 USER = '_ampt'
 GROUP = '_ampt'
 HMAC_KEY = '0xDEADBEEF'

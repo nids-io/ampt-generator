@@ -3,15 +3,18 @@ from __future__ import absolute_import
 import os
 import grp
 import pwd
+import sys
 import os.path
 import argparse
 import logging
 import multiprocessing
 
 import zmq
+from scapy.all import conf as scapy_conf
 
 from . import packetgen
 from . import app
+from .validator import prep_counter_db
 
 
 LOGLEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
@@ -30,7 +33,7 @@ def valid_configfile(s):
         with open(s, 'r') as f:
             pass
     except Exception as e:
-        raise argparse.ArgumentTypeError(e.strerror)
+        raise argparse.ArgumentTypeError('{} ({})'.format(e.strerror, s))
     return s
 
 def ampt_gen():
@@ -100,17 +103,14 @@ def ampt_gen_taskrunner():
     :return:
 
     '''
-    name = multiprocessing.current_process().name
-    pid = multiprocessing.current_process().pid
     msg_queue_bind = app.config['ZMQ_BIND']
 
     running_user = pwd.getpwuid(os.getuid()).pw_name
     running_group = grp.getgrgid(os.getgid()).gr_name
-    app.logger.debug('process %s (pid: %d) initialized as user %s, group %s',
-                     name, pid, running_user, running_group)
-    app.logger.debug('process %s (pid: %d) starting probe packet dispatcher '
-                     'using message queue at %s...',
-                     name, pid, msg_queue_bind)
+    app.logger.debug('initialized as user %s, group %s',
+                     running_user, running_group)
+    app.logger.debug('starting probe packet dispatcher using message queue '
+                     'at %s...', msg_queue_bind)
 
     try:
         context = zmq.Context()
@@ -118,8 +118,7 @@ def ampt_gen_taskrunner():
         socket.bind(msg_queue_bind)
         while True:
             packet = socket.recv_json()
-            app.logger.info('process %s (pid: %d) received workload: %s',
-                            name, pid, repr(packet))
+            app.logger.debug('received dispatch workload: %s', repr(packet))
             packetgen.generate_packet(**packet)
     except KeyboardInterrupt:
         pass
@@ -131,25 +130,21 @@ def ampt_builtin_server(host, port, user, group):
     :return:
 
     '''
-    name = multiprocessing.current_process().name
-    pid = multiprocessing.current_process().pid
-
     host = host or app.config['LISTEN_ADDRESS']
     port = port or app.config['LISTEN_PORT']
     user = user or app.config['USER']
     group = group or app.config['GROUP']
 
     if os.getuid() == 0:
-        app.logger.debug('process %s (pid: %d) dropping privileges...',
-                         name, pid)
+        app.logger.debug('dropping privileges...')
         drop_privileges(uid_name=user, gid_name=group)
 
     running_user = pwd.getpwuid(os.getuid()).pw_name
     running_group = grp.getgrgid(os.getgid()).gr_name
-    app.logger.debug('process %s (pid: %d) initialized as user %s, group %s',
-                     name, pid, running_user, running_group)
-    app.logger.debug('process %s (pid: %d) loading application on address %s '
-                     'and port %d...', name, pid, host, port)
+    app.logger.debug('initialized as user %s, group %s',
+                     running_user, running_group)
+    app.logger.debug('loading application on address %s, port %d...',
+                     host, port)
 
     app.run(host=host, port=port, use_reloader=False)
 
@@ -174,6 +169,9 @@ def ampt_server():
     parser.add_argument('-p', '--listen-port', type=int,
                         help='listen for connections on specified port '
                              '(default: {port})'.format(port=app.config['LISTEN_PORT']))
+    parser.add_argument('-d', '--db-path',
+                        help='set specified file path for counter database storage '
+                             '(default: {db})'.format(db=app.config['DB_PATH']))
     parser.add_argument('-u', '--user',
                         help='set app server process to run as specified user '
                              '(default: {user})'.format(user=app.config['USER']))
@@ -195,6 +193,7 @@ def ampt_server():
 
     loglevel = (args.loglevel or app.config['LOGLEVEL']).upper()
     logfile = args.logfile or app.config['LOGFILE']
+    db_path = args.db_path or app.config['DB_PATH']
 
     if not app.debug:
         app_formatter = app.config['CONSOLE_LOG_FORMATTER']
@@ -204,15 +203,47 @@ def ampt_server():
         app.logger.addHandler(stream_handler)
         app.logger.setLevel(loglevel)
     if logfile:
-        file_formatter = app.config['FILE_LOG_FORMATTER']
-        file_handler = logging.FileHandler(logfile)
-        file_handler.setLevel(loglevel)
-        file_handler.setFormatter(file_formatter)
-        app.logger.addHandler(file_handler)
+        try:
+            file_formatter = app.config['FILE_LOG_FORMATTER']
+            file_handler = logging.FileHandler(logfile)
+            file_handler.setLevel(loglevel)
+            file_handler.setFormatter(file_formatter)
+            app.logger.addHandler(file_handler)
+        except OSError as e:
+            msg = 'failure opening log file (%s)'
+            app.logger.critical(msg, e)
+            sys.exit(1)
 
-    app.logger.info('loaded configuration from file %s', args.config_file)
+    ver_info = 'ampt-generator running on Python %s using Scapy %s'
+    ver_py = '.'.join([str(x) for x in sys.version_info[:3]])
+    ver_scapy = scapy_conf.version
+    app.logger.info(ver_info, ver_py, ver_scapy)
+
+    app.logger.info('loaded configuration from file %s',
+                    args.config_file)
     app.logger.info('configured logging at level: %s',
                     logging.getLevelName(app.logger.level))
+
+    # Allow CLI path to override configuration file path for database
+    app.config['DB_PATH'] = db_path
+
+    if not os.path.exists(app.config['DB_PATH']):
+        app.logger.debug('initializing new replay counter database...')
+        try:
+            _kwargs = {'db_path': app.config['DB_PATH']}
+            # If executed as superuser, app will require access to counter DB
+            # with lower privileges and file should be writable to that user:
+            if os.getuid() == 0:
+                _kwargs.update(
+                    user=app.config['USER'], group=app.config['GROUP'])
+            # XXX prep_counter_db(app.config['DB_PATH'])
+            prep_counter_db(**_kwargs)
+        except OSError as e:
+            msg = 'unable to create counter database (%s)'
+            app.logger.critical(msg, e.strerror)
+            sys.exit(1)
+
+    app.logger.debug('using counter database path %s', app.config['DB_PATH'])
     app.logger.info('starting ampt-manager API and packet dispatch services...')
 
     server_options =  {
@@ -222,16 +253,16 @@ def ampt_server():
         'group': args.group,
     }
 
-    runner = multiprocessing.Process(
+    task_runner_process = multiprocessing.Process(
         target=ampt_gen_taskrunner,
-        name='task_runner'
+        name=app.config['PROC_NAME_RUNNER']
     )
-    unprivileged_process = multiprocessing.Process(
+    app_server_process = multiprocessing.Process(
         target=ampt_builtin_server,
-        name='app_server',
+        name=app.config['PROC_NAME_SERVER'],
         kwargs=server_options
     )
 
-    runner.start()
-    unprivileged_process.start()
+    task_runner_process.start()
+    app_server_process.start()
 

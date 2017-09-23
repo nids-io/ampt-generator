@@ -2,28 +2,16 @@
 API for AMPT generator
 
 '''
-
 import multiprocessing
 
 import zmq
 from flask import request, abort
-from flask_restful import Resource, Api, reqparse
+from flask_restplus import Resource, Api, reqparse, inputs
 
 from . import app, packetgen
-from .validator import (validate_request, HMACValidationError,
-                        CounterValidationError)
+from .validator import (persist_counter, validate_request,
+                        RequestValidationError)
 
-
-api = Api(app)
-
-probe_parser = reqparse.RequestParser()
-probe_parser.add_argument('dest_addr')
-probe_parser.add_argument('dest_port', type=int)
-probe_parser.add_argument('src_port', type=int, required=False)
-probe_parser.add_argument('proto', choices=('tcp', 'udp'), default='tcp',
-                          required=False)
-probe_parser.add_argument('ts', type=float)
-probe_parser.add_argument('h')
 
 class Alive(Resource):
     '''
@@ -41,36 +29,52 @@ class GenerateProbe(Resource):
 
     '''
     def get(self):
-        name = multiprocessing.current_process().name
-        pid = multiprocessing.current_process().pid
+        probe_parser = reqparse.RequestParser()
+        probe_parser.add_argument('dest_addr', type=inputs.ip, location='args',
+                                  required=True)
+        probe_parser.add_argument('dest_port', type=inputs.int_range(0, 65535),
+                                  location='args', required=True)
+        probe_parser.add_argument('src_port', type=inputs.int_range(0, 65535),
+                                  location='args', required=False)
+        probe_parser.add_argument('proto', choices=('tcp', 'udp'), default='tcp',
+                                  location='args', required=False)
+        probe_parser.add_argument('ts', type=float, location='args',
+                                  required=True)
+        probe_parser.add_argument('h', type=inputs.regex('^[0-9a-f]{32,512}$'),
+                                  location='args', required=True)
+        args = probe_parser.parse_args(strict=True)
+
         remote_addr = request.remote_addr
+        req_counter = args['ts']
 
         context = zmq.Context()
         socket = context.socket(zmq.PUSH)
         socket.connect(app.config.get('ZMQ_BIND'))
-        args = probe_parser.parse_args()
-        # XXX need to:
-        # 1. validate HMAC and timestamp or 403 (partially done)
+
+        # Validate HMAC and timestamp or return HTTP 403
         try:
             validate_request(args)
-            app.logger.info('process %s (pid: %d) authenticated dispatch '
-                            'request from %s with valid HMAC',
-                            name, pid, remote_addr)
-        except HMACValidationError as e:
-            msg = ('process %s (pid: %d) received invalid request from %s: '
-                   'probe request failed HMAC verification')
-            app.logger.warning(msg, name, pid, remote_addr)
+            app.logger.info('authenticated dispatch request from %s '
+                            'with valid HMAC', remote_addr)
+        except RequestValidationError as e:
+            msg = ('received invalid request from %s: %s')
+            app.logger.warning(msg, remote_addr, e)
             abort(403, e)
-        except CounterValidationError as e:
-            msg = ('process %s (pid: %d) received invalid request from %s: '
-                   'probe request failed timestamp validation')
-            app.logger.warning(msg, name, pid, remote_addr)
-            abort(403, e)
-        # 2. persist timestamp
-        # 3. remove timestamp from args (done)
+
+        persist_counter(app.config['DB_PATH'], req_counter)
+        app.logger.debug('stored new value %s in counter database', req_counter)
+
+        # Remove counter from args and pass to task runner
         del args['ts']
         socket.send_json(args)
+        app.logger.debug('passed dispatch request parameters to message queue')
         return args
 
+app.logger.debug('initializing application API')
+api = Api(app)
+
+app.logger.debug('adding "Alive" API resource')
 api.add_resource(Alive, '/api/health')
+app.logger.debug('adding "GenerateProbe" API resource')
 api.add_resource(GenerateProbe, '/api/generate_probe')
+

@@ -13,15 +13,13 @@ logger = logging.getLogger('ampt_generator.packetgen')
 logger.setLevel(logging.DEBUG)  # Collect all log levels
 logger.addHandler(logging.NullHandler())  # Set the default logger to be a nullhandler
 
+# Quiet down logging from scapy
 conf.verb = 0
 
 
 def generate_packet(dest_addr, dest_port, src_port=app.config.get('SRC_PORT', None), proto='tcp',
                     ip_id=app.config.get('IP_ID', 1)):
     'Craft and send requested probe packet'
-
-    name = multiprocessing.current_process().name
-    pid = multiprocessing.current_process().pid
 
     if proto == 'tcp':
         transport = TCP
@@ -36,14 +34,13 @@ def generate_packet(dest_addr, dest_port, src_port=app.config.get('SRC_PORT', No
     src_port = int(src_port)
     ip_id = int(ip_id)
     payload_text = app.config.get('PACKET_CONTENT')
-    app.logger.info('process %s (pid: %d) generating %s probe packet '
-                    'to %s:%s...', name, pid, proto.upper(), dest_addr,
-                    dest_port)
+    app.logger.info('generating %s probe packet to %s:%s...',
+                    proto.upper(), dest_addr, dest_port)
 
     protocol = transport(dport=dest_port, sport=src_port)
     packet = IP(dst=dest_addr, src=src_addr, id=ip_id)/protocol/payload_text
     send(packet)
-    app.logger.debug('process %s (pid: %d) sent crafted probe packet',
-                     name, pid)
+    app.logger.debug('finished sending crafted probe packet')
+
     return packet
 

@@ -13,10 +13,16 @@ GROUP = 'nobody'
 CONFIG_FILE = '/etc/ampt-generator.conf'
 LOGLEVEL = 'warning'
 ZMQ_BIND = 'tcp://127.0.0.1:9959'
-CONSOLE_LOG_FORMATTER = logging.Formatter('%(asctime)s: %(message)s')
-DEBUG_LOG_FORMATTER = logging.Formatter('[%(funcName)s-%(levelname)s] %(asctime)s: %(message)s')
-FILE_LOG_FORMATTER = logging.Formatter('%(asctime)s: [%(levelname)s] %(module)s - %(message)s')
+PROC_NAME_RUNNER = 'TaskRunner'
+PROC_NAME_SERVER = 'AppServer'
+CONSOLE_LOG_FORMATTER = logging.Formatter('%(asctime)s: %(processName)s (pid: %(process)d) - %(message)s')
+DEBUG_LOG_FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(module)s:%(funcName)s:%(lineno)s: %(processName)s (pid: %(process)d) - %(message)s')
+FILE_LOG_FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(module)s: %(processName)s (pid: %(process)d) - %(message)s')
 HMAC_DIGEST = 'sha256'
+
+# Database defaults
+DB_PATH = '/var/ampt/ampt-generator.db'
+DB_INIT_VAL = 0
 
 # Packet generator / NIDS rule defaults
 RULE_STRUCTURE = ('alert ip any any -> any any (msg:"NIDS HEALTH MONITORING"; '
