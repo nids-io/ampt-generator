@@ -1,6 +1,6 @@
 # ampt-generator
 
-Healthcheck packet generator for the AMPT passive network tools monitor
+Healthcheck packet generator for the AMPT passive network tools monitor.
 
 AMPT is a practical framework designed to aid those who operate network IDS
 sensors and similar passive security monitoring systems. A tailored approach
@@ -19,8 +19,9 @@ See [AMPT][ampt] for more information on the AMPT framework and the problems
 it solves.
 
 **ampt-generator** functions as a simple packet crafting component in the AMPT
-framework. It runs a web API server to receive requests from the AMPT manager
-to dispatch healthcheck IP packets to monitored network segments. It is
+framework. It exposes a simple API service to receive requests from the AMPT
+manager to dispatch healthcheck IP packets to monitored network segments. API
+requests are authenticated using HMAC and a simplistic replay counter. It is
 implemented in Python and uses the Scapy ([scapy3k][scapy3k]) library for
 packet generation. It currently supports Python 3 and is simple to deploy.
 
