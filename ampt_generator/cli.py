@@ -11,9 +11,12 @@ import multiprocessing
 
 import zmq
 from scapy.all import conf as scapy_conf
+from flask import __version__ as flask_version
+from flask_restplus import __version__ as restplus_version
 
-from . import packetgen
 from . import app
+from . import packetgen
+from . import __version__ as ampt_gen_version
 from .validator import prep_counter_db
 
 
@@ -211,10 +214,14 @@ def ampt_server():
             app.logger.critical(msg, e)
             sys.exit(1)
 
-    ver_info = 'ampt-generator running on Python %s using Scapy %s'
-    ver_py = '.'.join([str(x) for x in sys.version_info[:3]])
-    ver_scapy = scapy_conf.version
-    app.logger.info(ver_info, ver_py, ver_scapy)
+    ver_info = 'starting ampt-generator %s'
+    ver_dep_info = ('running on Python %s using Flask %s, '
+                    'Flask-RESTPlus %s, Scapy %s')
+    py_version = '.'.join([str(x) for x in sys.version_info[:3]])
+    scapy_version = scapy_conf.version
+    app.logger.info(ver_info, ampt_gen_version)
+    app.logger.debug(ver_dep_info, py_version, flask_version,
+                     restplus_version,  scapy_version)
 
     app.logger.info('loaded configuration from file %s',
                     args.config_file)

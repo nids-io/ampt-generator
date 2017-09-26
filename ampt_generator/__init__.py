@@ -1,13 +1,16 @@
 '''
 ampt-generator Flask app and REST API
+
 '''
 
-import os
 from flask import Flask
+
+
+__version__ = '0.2.3'
+__url__ = 'https://github.com/nids-io/ampt-generator'
 
 app = Flask(__name__)
 app.config.from_object('ampt_generator.settings')
-app.config.from_envvar('AMPT_GEN_SETTINGS', silent=True)
 
 from . import api
 
