@@ -17,8 +17,8 @@ logger.addHandler(logging.NullHandler())  # Set the default logger to be a nullh
 conf.verb = 0
 
 
-def generate_packet(dest_addr, dest_port, src_port=app.config.get('SRC_PORT', None), proto='tcp',
-                    ip_id=app.config.get('IP_ID', 1)):
+def generate_packet(dest_addr, dest_port, src_port=app.config['SRC_PORT'],
+                    proto='tcp', ip_id=app.config['IP_ID']):
     'Craft and send requested probe packet'
 
     if proto == 'tcp':
@@ -34,11 +34,10 @@ def generate_packet(dest_addr, dest_port, src_port=app.config.get('SRC_PORT', No
     src_port = int(src_port)
     ip_id = int(ip_id)
     payload_text = app.config.get('PACKET_CONTENT')
-    app.logger.info('generating %s probe packet to %s:%s...',
-                    proto.upper(), dest_addr, dest_port)
 
     protocol = transport(dport=dest_port, sport=src_port)
     packet = IP(dst=dest_addr, src=src_addr, id=ip_id)/protocol/payload_text
+    app.logger.debug('generated probe packet with Scapy: %s', packet.summary())
     send(packet)
     app.logger.debug('finished sending crafted probe packet')
 
