@@ -189,7 +189,7 @@ def ampt_server():
     app.config.from_pyfile(os.path.abspath(args.config_file))
 
     loglevel = (args.loglevel or app.config['LOGLEVEL']).upper()
-    logfile = args.logfile or app.config['LOGFILE']
+    logfile = args.logfile or app.config.get('LOGFILE')
     db_path = args.db_path or app.config['DB_PATH']
 
     if not app.debug:
