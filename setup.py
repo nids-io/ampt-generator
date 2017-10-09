@@ -42,7 +42,11 @@ setup(
         'Flask',
         'flask-restplus',
         'future',
-        'netifaces',
+        # 2017-10-09 DRS: required netifaces to avoid some non-fatal warnings
+        # observed previously, but later noted other fatal exceptions when it
+        # was installed. Leaving out for now. Reference:
+        # https://github.com/phaethon/scapy/issues/206
+        #'netifaces',
         'pyzmq',
         'scapy-python3',
     ],
