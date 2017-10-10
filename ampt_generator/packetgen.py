@@ -1,7 +1,6 @@
 '''Generation of dispatched probe packets'''
 
 import logging
-import multiprocessing
 
 logging.getLogger('scapy.runtime').setLevel(logging.ERROR)
 from scapy.all import IP, TCP, UDP, send, conf
