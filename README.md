@@ -22,8 +22,8 @@ it solves.
 framework. It exposes a simple API service to receive requests from the AMPT
 manager to dispatch healthcheck IP packets to monitored network segments. API
 requests are authenticated using HMAC and a simplistic replay counter. It is
-implemented in Python and uses the Scapy ([scapy3k][scapy3k]) library for
-packet generation. It currently supports Python 3 and is simple to deploy.
+implemented in Python and uses the [Scapy][scapy] library for packet
+generation. It currently supports Python 3 and is simple to deploy.
 
 Other AMPT components include:
 
@@ -46,5 +46,5 @@ documentation.
 [ampt_generator]: https://github.com/nids-io/ampt-generator
 [ampt_monitor]: https://github.com/nids-io/ampt-monitor
 [ampt]: https://github.com/nids-io/ampt-manager/wiki/AMPT
-[scapy3k]: https://github.com/phaethon/scapy
+[scapy]: https://scapy.net/
 
