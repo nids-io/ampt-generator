@@ -78,10 +78,15 @@ def ampt_rulegen():
 
     '''
     # Use argparse only to get consistent command behavior and --help support
-    description = 'Output health check probe network IDS rule'
-    parser = argparse.ArgumentParser(description=description)
+    desc = 'Output health check probe network IDS rule'
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument('engine', choices=['snort','suricata','bro'],
+                        help='sensor engine for which to output rule')
     args = parser.parse_args()
-    print(app.config.get('RULE_STRUCTURE') % app.config.get('PACKET_CONTENT_SNORT'))
+    if args.engine in ('snort', 'suri'):
+        print(app.config.get('SURI_RULE_STRUCTURE') % app.config.get('PACKET_CONTENT_SURI'))
+    elif args.engine in ('bro',):
+        print(app.config.get('BRO_SIG_STRUCTURE') % app.config.get('PACKET_CONTENT_BRO'))
 
 
 def drop_privileges(uid_name='nobody', gid_name='nogroup'):

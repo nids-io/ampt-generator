@@ -25,13 +25,18 @@ DB_PATH = '/var/ampt/ampt-generator.db'
 DB_INIT_VAL = 0
 
 # Packet generator / NIDS rule defaults
-RULE_STRUCTURE = ('alert ip any any -> any any (msg:"NIDS HEALTH MONITORING"; '
-                  'content:"|%s|"; fast_pattern:only; '
-                  'classtype:not-suspicious; '
-                  'reference:url,github.com/nids-io/ampt-generator; '
-                  'sid:3900001; rev:1;)')
+SURI_RULE_STRUCTURE = ('alert ip any any -> any any (msg:"NIDS HEALTH MONITORING"; '
+                       'content:"|%s|"; fast_pattern:only; '
+                       'classtype:not-suspicious; '
+                       'reference:url,github.com/nids-io/ampt-generator; '
+                       'sid:3900001; rev:1;)')
+BRO_SIG_STRUCTURE = ('''signature ampt-healthcheck {
+    payload /%s/
+    event "NIDS health monitoring probe observed"
+}''')
 PACKET_CONTENT = '0c56f99b-cf66-4679-9be2-3b6384c27586.NIDS_HEALTH_CHECK'
-PACKET_CONTENT_SNORT = ''.join('{:02x}'.format(ord(c)) for c in PACKET_CONTENT)
+PACKET_CONTENT_SURI = ''.join('{:02x}'.format(ord(c)) for c in PACKET_CONTENT)
+PACKET_CONTENT_BRO = ''.join('\\x{:02x}'.format(ord(c)) for c in PACKET_CONTENT)
 SRC_PORT = 65500
 IP_ID = 1
 
