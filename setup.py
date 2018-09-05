@@ -17,7 +17,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='ampt-generator',
-    version='0.3.2',
+    version='0.3.3',
     description='AMPT-generator, a simple Flask based app that generates packets to be observed by passive networking monitoring',
     long_description=long_description,
     url='https://github.com/nids-io/ampt-generator',
@@ -55,7 +55,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ampt-gen=ampt_generator.cli:ampt_gen',
-            'ampt-server=ampt_generator.cli:ampt_server',
+            'ampt-generator=ampt_generator.cli:ampt_server',
             'ampt-rulegen=ampt_generator.cli:ampt_rulegen',
         ],
     },
