@@ -24,7 +24,7 @@ LOGLEVEL_CHOICES = ['debug', 'info', 'warning', 'error', 'critical']
 
 ### XXX what are we doing in this section? Flask has a default logger as a
 ### StreamHandler at app.logger and this is creating a new root logger.
-logger = logging.getLogger('ampt_generator')  # XXX: per module logs based off verbosity
+logger = logging.getLogger(__name__)  # XXX: per module logs based off verbosity
 # XXX logger.setLevel(logging.DEBUG)  # Collect all log levels
 logger.setLevel(app.config['LOGLEVEL'].upper())
 logger.addHandler(logging.NullHandler())  # Set the default logger to be a nullhandler

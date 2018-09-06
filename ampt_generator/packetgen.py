@@ -2,13 +2,14 @@
 
 import logging
 
+# Tone down scapy builtin logging
 logging.getLogger('scapy.runtime').setLevel(logging.ERROR)
 from scapy.all import IP, TCP, UDP, send, conf
 
 from . import app
 
 
-logger = logging.getLogger('ampt_generator.packetgen')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Collect all log levels
 logger.addHandler(logging.NullHandler())  # Set the default logger to be a nullhandler
 
