@@ -6,7 +6,7 @@ import multiprocessing
 
 import zmq
 from flask import request, abort
-from flask_restplus import Resource, Api, reqparse, inputs
+from flask_restx import Resource, Api, reqparse, inputs
 
 from . import app, packetgen
 from .validator import (persist_counter, validate_request,

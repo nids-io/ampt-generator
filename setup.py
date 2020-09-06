@@ -17,7 +17,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='ampt-generator',
-    version='0.3.4',
+    version='0.4.0',
     description='AMPT-generator, a simple Flask based app that generates packets to be observed by passive networking monitoring',
     long_description=long_description,
     url='https://github.com/nids-io/ampt-generator',
@@ -40,7 +40,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'Flask',
-        'flask-restplus',
+        'flask-restx',
         'future',
         # 2017-10-09 DRS: required netifaces to avoid some non-fatal warnings
         # observed previously, but later noted other fatal exceptions when it
